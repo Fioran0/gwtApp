@@ -3,11 +3,11 @@ package client;
 import client.Purchase;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Shop implements Serializable {
 
     private Integer id;
-    private Purchase purchase;
     private String shopName;
     private String shopLocationArea;
     private Double CommissionFee;
@@ -15,16 +15,15 @@ public class Shop implements Serializable {
     public Shop() {
     }
 
-    public Shop(Integer id, String shopName, String shopLocationArea, Double commissionFee) {
+    public Shop(String shopName, String shopLocationArea, Double commissionFee) {
         this.id = id;
         this.shopName = shopName;
         this.shopLocationArea = shopLocationArea;
         CommissionFee = commissionFee;
     }
 
-    public Shop(Integer id, Purchase purchase, String shopName, String shopLocationArea, Double commissionFee) {
+    public Shop(Integer id, String shopName, String shopLocationArea, Double commissionFee) {
         this.id = id;
-        this.purchase = purchase;
         this.shopName = shopName;
         this.shopLocationArea = shopLocationArea;
         CommissionFee = commissionFee;
@@ -36,14 +35,6 @@ public class Shop implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
-    }
-
-    public Purchase getPurchase() {
-        return purchase;
-    }
-
-    public void setPurchase(Purchase purchase) {
-        this.purchase = purchase;
     }
 
     public String getShopName() {
@@ -68,5 +59,21 @@ public class Shop implements Serializable {
 
     public void setCommissionFee(Double commissionFee) {
         CommissionFee = commissionFee;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Shop shop = (Shop) o;
+        return id.equals(shop.id) &&
+                shopName.equals(shop.shopName) &&
+                shopLocationArea.equals(shop.shopLocationArea) &&
+                CommissionFee.equals(shop.CommissionFee);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, shopName, shopLocationArea, CommissionFee);
     }
 }

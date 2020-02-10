@@ -36,6 +36,7 @@ public class BooksEntry implements EntryPoint {
 
     private List<Books> books = new ArrayList<>();
     private List<Purchase> purchases = new ArrayList<Purchase>();
+    private List<Buyer> buyers = new ArrayList<>();
 
     private final MenuBar menu = new MenuBar();
     private final HorizontalPanel bookBtnPanel = new HorizontalPanel();
@@ -54,11 +55,18 @@ public class BooksEntry implements EntryPoint {
     private final HorizontalPanel boxPanel = new HorizontalPanel();
     private final HorizontalPanel boxPurchasePanel = new HorizontalPanel();
 
+    private final ListBox booksListBox = new ListBox();
+    private final ListBox buyersListBox = new ListBox();
+
     private final TextBox idBox = new TextBox();
     private final TextBox nameBox = new TextBox();
     private final TextBox costBox = new TextBox();
     private final TextBox warehouseBox = new TextBox();
     private final TextBox quantityBox = new TextBox();
+    private final TextBox purchaseDateBox = new TextBox();
+    private final TextBox purchaseOrderNumberBox = new TextBox();
+    private final TextBox purchaseQuantityBox = new TextBox();
+    private final TextBox purchaseSumBox = new TextBox();
     private final CellTable<Books> cellTableOfBooks = new CellTable<>();
     private final DataGrid<Purchase> cellTableOfPurchase = new DataGrid();
 
@@ -82,6 +90,7 @@ public class BooksEntry implements EntryPoint {
             boxPanel.setVisible(true);
             purchaseBtnPanel.setVisible(false);
             vpPurchase.setVisible(false);
+            boxPurchasePanel.setVisible(false);
         });
         menu.addItem("purchase", (Command) () -> {
             vp.setVisible(false);
@@ -90,6 +99,7 @@ public class BooksEntry implements EntryPoint {
             vpPurchase.setVisible(true);
             cellTableOfPurchase.setVisible(true);
             purchaseBtnPanel.setVisible(true);
+            boxPurchasePanel.setVisible(true);
         });
         menu.addItem("buyers", cmd);
         menu.addItem("shops", cmd);
@@ -107,6 +117,19 @@ public class BooksEntry implements EntryPoint {
         boxPanel.add(warehouseBox);
         boxPanel.add(quantityBox);
         boxPanel.setWidth("600px");
+
+
+        boxPurchasePanel.add(purchaseOrderNumberBox);
+        purchaseOrderNumberBox.setText("OrderNumber");
+        boxPurchasePanel.add(purchaseDateBox);
+        purchaseDateBox.setText("Date");
+        boxPurchasePanel.add(purchaseQuantityBox);
+        purchaseQuantityBox.setText("Quantity");
+        boxPurchasePanel.add(purchaseSumBox);
+        purchaseSumBox.setText("Sun");
+        boxPurchasePanel.add(booksListBox);
+        boxPurchasePanel.add(buyersListBox);
+
 
         addBookButton.setSize("80px", "20px");
         editBookButton.setSize("80px", "20px");
@@ -136,6 +159,7 @@ public class BooksEntry implements EntryPoint {
         purchaseBtnPanel.setVisible(false);
         vpPurchase.setVisible(false);
         cellTableOfPurchase.setVisible(false);
+        boxPurchasePanel.setVisible(false);
         purchaseBtnPanel.add(addPurchaseButton);
         purchaseBtnPanel.add(editPurchaseButton);
         purchaseBtnPanel.add(deletePurchaseButton);
@@ -173,6 +197,50 @@ public class BooksEntry implements EntryPoint {
                     new Buyer(123, "test", "testarea", 88.8), 9, 1000.0,
                     new Books(123, "test", 1000.0, "test", 9)));
 
+            XMLHttpRequest req = XMLHttpRequest.create();
+            req.open("POST", "http://localhost:8082/purchase/add", "true");
+            req.setRequestHeader(HEADER, HEADER_VALUE);
+
+            Purchase send = new Purchase();
+            send.setOrderNumber(Integer.valueOf(purchaseOrderNumberBox.getValue()));
+            send.setDate(new Date(Long.valueOf(purchaseDateBox.getValue())));
+            send.setQuantity(Integer.valueOf(purchaseQuantityBox.getValue()));
+            send.setSum(Double.valueOf(purchaseSumBox.getValue()));
+            send.setBook(books.get(1));
+            send.setBuyer(buyers.get(1));
+            send.setSeller(new Shop("testshop", "testshop", 111.0));
+
+            JSONString orderNumber = new JSONString(String.valueOf(send.getOrderNumber()));
+            JSONString Date = new JSONString(String.valueOf(send.getDate()));
+            JSONString quantity = new JSONString(String.valueOf(send.getQuantity()));
+            JSONString sum = new JSONString(String.valueOf(send.getSum()));
+
+            JSONObject shop = new JSONObject();
+            shop.put("shopName", new JSONString(send.getSeller().getShopName()));
+            shop.put("shopLocationArea", new JSONString(send.getSeller().getShopLocationArea()));
+            shop.put("commissionFee", new JSONString(String.valueOf(send.getSeller().getCommissionFee())));
+
+            JSONObject Buyer = new JSONObject();
+            Buyer.put("surname", new JSONString(send.getBuyer().getSurname()));
+            Buyer.put("residenceArea", new JSONString(send.getBuyer().getResidenceArea()));
+            Buyer.put("discount", new JSONString(String.valueOf(send.getBuyer().getDiscount())));
+
+            JSONObject Book = new JSONObject();
+            Book.put("bookName", new JSONString(send.getBook().getName()));
+            Book.put("bookCost", new JSONString(String.valueOf(send.getBook().getCost())));
+            Book.put("bookWarehouse", new JSONString(send.getBook().getWarehouse()));
+            Book.put("bookQuantity", new JSONString(String.valueOf(send.getBook().getQuantity())));
+
+            JSONObject toSend = new JSONObject();
+            toSend.put("orderNumber", orderNumber);
+            toSend.put("date", Date);
+            toSend.put("quantity", quantity);
+            toSend.put("sum", sum);
+            toSend.put("book", Book);
+            toSend.put("buyer", Buyer);
+            toSend.put("seller", shop);
+            req.send(toSend.toString());
+
             cellTableOfPurchase.redraw();
             cellTableOfPurchase.setRowCount(purchases.size(), true);
             cellTableOfPurchase.setRowData(0, purchases);
@@ -192,10 +260,9 @@ public class BooksEntry implements EntryPoint {
                         for (int i = 0; i < jsonArray.size(); i++) {
                             JSONObject obj = jsonArray.get(i).isObject();
 //                            JSONArray shopTmp = obj.get("seller").isArray();
-                            JSONArray buyerTmp = obj.get("buyer").isArray();
+                            JSONObject buyerTmp = obj.get("buyer").isObject();
                             JSONArray bookTmp = obj.get("book").isArray();
 
-                            JSONObject buyerObj = buyerTmp.get(0).isObject();
 //                            JSONObject shopObj = shopTmp.get(0).isObject();
                             JSONObject bookObj = bookTmp.get(0).isObject();
                             JSONObject shopOb = obj.get("seller").isObject();
@@ -211,10 +278,10 @@ public class BooksEntry implements EntryPoint {
 //                            shop.setCommissionFee(shopObj.get("commissionFee").isNumber().doubleValue());
 
                             Buyer buyer = new Buyer();
-                            buyer.setId((int)buyerObj.get("id").isNumber().doubleValue());
-                            buyer.setSurname(buyerObj.get("surname").isString().stringValue());
-                            buyer.setResidenceArea(buyerObj.get("residenceArea").isString().stringValue());
-                            buyer.setDiscount(buyerObj.get("discount").isNumber().doubleValue());
+                            buyer.setId((int)buyerTmp.get("id").isNumber().doubleValue());
+                            buyer.setSurname(buyerTmp.get("surname").isString().stringValue());
+                            buyer.setResidenceArea(buyerTmp.get("residenceArea").isString().stringValue());
+                            buyer.setDiscount(buyerTmp.get("discount").isNumber().doubleValue());
 
 
                             Books book = new Books();
@@ -407,6 +474,7 @@ public class BooksEntry implements EntryPoint {
         addBookButton.addClickHandler(event -> {
 
             addBookRequest();
+            loadBuyerList();
 
             XMLHttpRequest req = XMLHttpRequest.create();
             req.open("GET", "http://localhost:8082/book/all", "false");
@@ -419,8 +487,10 @@ public class BooksEntry implements EntryPoint {
                         JSONValue jsonValue = JSONParser.parseStrict(req.getResponseText());
                         JSONArray jsonArray = jsonValue.isArray();
                         books.clear();
+                        booksListBox.clear();
                         for (int i = 0; i < jsonArray.size(); i++) {
                             JSONObject obj = jsonArray.get(i).isObject();
+                            booksListBox.addItem(obj.get("bookName").isString().stringValue());
                             books.add(new Books((int) obj.get("id").isNumber().doubleValue(),
                                                     obj.get("bookName").isString().stringValue(),
                                                     obj.get("bookCost").isNumber().doubleValue(),
@@ -475,7 +545,6 @@ public class BooksEntry implements EntryPoint {
             req.send(toSend.toString());
         });
 
-//        DataGrid();
 
         RootPanel.get().add(menu);
         RootPanel.get().add(vp);
@@ -577,9 +646,10 @@ public class BooksEntry implements EntryPoint {
                 if (xhr.getStatus() == 200) {
                     JSONValue jsonValue = JSONParser.parseLenient(req.getResponseText());
                     JSONArray jsonArray = jsonValue.isArray();
-                    JSONObject obj = jsonArray.get(0).isObject();
 
                     for (int i = 0; i < jsonArray.size(); i++) {
+                        JSONObject obj = jsonArray.get(0).isObject();
+                        booksListBox.addItem(obj.get("bookName").isString().stringValue());
                         books.add(new Books((int) obj.get("id").isNumber().doubleValue(),
                                 obj.get("bookName").isString().stringValue(),
                                 obj.get("bookCost").isNumber().doubleValue(),
@@ -588,13 +658,40 @@ public class BooksEntry implements EntryPoint {
                     }
                 }
             }
+
+            cellTableOfBooks.redraw();
+            cellTableOfBooks.setRowCount(books.size(), true);
+            cellTableOfBooks.setRowData(0, books);
         });
         req.send();
-        cellTableOfBooks.redraw();
+    }
 
-        cellTableOfBooks.setRowCount(books.size(), true);
-        cellTableOfBooks.setRowData(0, books);
+    private void loadBuyerList() {
+        {
+            XMLHttpRequest req = XMLHttpRequest.create();
+            req.open("GET", "http://localhost:8082/buyer/all", "true");
+            req.setOnReadyStateChange(xhr -> {
 
+                if (xhr.getReadyState() == XMLHttpRequest.DONE) {
+                    if (xhr.getStatus() == 200) {
+                        JSONValue jsonValue = JSONParser.parseLenient(req.getResponseText());
+                        JSONArray jsonArray = jsonValue.isArray();
+                        buyersListBox.clear();
+
+                        for (int i = 0; i < jsonArray.size(); i++) {
+                            JSONObject obj = jsonArray.get(i).isObject();
+
+                            buyersListBox.addItem(obj.get("surname").isString().stringValue());
+                            buyers.add(new Buyer((int) obj.get("id").isNumber().doubleValue(),
+                                    obj.get("surname").isString().stringValue(),
+                                    obj.get("residenceArea").isString().stringValue(),
+                                    obj.get("discount").isNumber().doubleValue()));
+                        }
+                    }
+                }
+            });
+            req.send();
+        }
     }
 
 
