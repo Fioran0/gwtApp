@@ -13,14 +13,13 @@ public class Buyer implements Serializable {
     public Buyer() {
     }
 
+
+<<<<<<< HEAD
+    public Buyer(String surname, String residenceArea, Double discount) {
+=======
     public Buyer(Integer id, String surname, String residenceArea, Double discount) {
         this.id = id;
-        Surname = surname;
-        ResidenceArea = residenceArea;
-        Discount = discount;
-    }
-
-    public Buyer(String surname, String residenceArea, Double discount) {
+>>>>>>> master
         Surname = surname;
         ResidenceArea = residenceArea;
         Discount = discount;
@@ -34,7 +33,10 @@ public class Buyer implements Serializable {
         this.id = id;
     }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> master
     public String getSurname() {
         return Surname;
     }
