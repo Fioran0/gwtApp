@@ -1,13 +1,12 @@
 package client;
 
-import client.Purchase;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Shop implements Serializable {
 
     private Integer id;
-    private Purchase purchase;
     private String shopName;
     private String shopLocationArea;
     private Double CommissionFee;
@@ -22,9 +21,7 @@ public class Shop implements Serializable {
         CommissionFee = commissionFee;
     }
 
-    public Shop(Integer id, Purchase purchase, String shopName, String shopLocationArea, Double commissionFee) {
-        this.id = id;
-        this.purchase = purchase;
+    public Shop(String shopName, String shopLocationArea, Double commissionFee) {
         this.shopName = shopName;
         this.shopLocationArea = shopLocationArea;
         CommissionFee = commissionFee;
@@ -36,14 +33,6 @@ public class Shop implements Serializable {
 
     public void setId(Integer id) {
         this.id = id;
-    }
-
-    public Purchase getPurchase() {
-        return purchase;
-    }
-
-    public void setPurchase(Purchase purchase) {
-        this.purchase = purchase;
     }
 
     public String getShopName() {
@@ -68,5 +57,21 @@ public class Shop implements Serializable {
 
     public void setCommissionFee(Double commissionFee) {
         CommissionFee = commissionFee;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Shop shop = (Shop) o;
+        return getId().equals(shop.getId()) &&
+                getShopName().equals(shop.getShopName()) &&
+                getShopLocationArea().equals(shop.getShopLocationArea()) &&
+                getCommissionFee().equals(shop.getCommissionFee());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getShopName(), getShopLocationArea(), getCommissionFee());
     }
 }

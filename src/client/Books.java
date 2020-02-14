@@ -1,6 +1,7 @@
 package client;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Books implements Serializable {
     private Integer id;
@@ -69,5 +70,22 @@ public class Books implements Serializable {
                 ", Warehouse='" + Warehouse + '\'' +
                 ", Quantity=" + Quantity +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Books books = (Books) o;
+        return getId().equals(books.getId()) &&
+                getName().equals(books.getName()) &&
+                getCost().equals(books.getCost()) &&
+                getWarehouse().equals(books.getWarehouse()) &&
+                getQuantity().equals(books.getQuantity());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getName(), getCost(), getWarehouse(), getQuantity());
     }
 }

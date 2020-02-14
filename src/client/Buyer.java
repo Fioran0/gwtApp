@@ -1,11 +1,11 @@
 package client;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 public class Buyer implements Serializable {
 
     private Integer id;
-    private Purchase purchase;
     private String Surname;
     private String ResidenceArea;
     private Double Discount;
@@ -20,9 +20,7 @@ public class Buyer implements Serializable {
         Discount = discount;
     }
 
-    public Buyer(Integer id, Purchase purchase, String surname, String residenceArea, Double discount) {
-        this.id = id;
-        this.purchase = purchase;
+    public Buyer(String surname, String residenceArea, Double discount) {
         Surname = surname;
         ResidenceArea = residenceArea;
         Discount = discount;
@@ -36,13 +34,6 @@ public class Buyer implements Serializable {
         this.id = id;
     }
 
-    public Purchase getPurchase() {
-        return purchase;
-    }
-
-    public void setPurchase(Purchase purchase) {
-        this.purchase = purchase;
-    }
 
     public String getSurname() {
         return Surname;
@@ -66,5 +57,21 @@ public class Buyer implements Serializable {
 
     public void setDiscount(Double discount) {
         Discount = discount;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Buyer buyer = (Buyer) o;
+        return getId().equals(buyer.getId()) &&
+                getSurname().equals(buyer.getSurname()) &&
+                getResidenceArea().equals(buyer.getResidenceArea()) &&
+                getDiscount().equals(buyer.getDiscount());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getSurname(), getResidenceArea(), getDiscount());
     }
 }

@@ -5,8 +5,7 @@ import com.google.gwt.core.client.EntryPoint;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.dom.client.Style;
 
-import com.google.gwt.event.dom.client.ClickEvent;
-import com.google.gwt.event.dom.client.ClickHandler;
+
 import com.google.gwt.json.client.*;
 import com.google.gwt.user.cellview.client.CellTable;
 import com.google.gwt.user.cellview.client.DataGrid;
@@ -14,17 +13,16 @@ import com.google.gwt.user.cellview.client.SimplePager;
 import com.google.gwt.user.cellview.client.TextColumn;
 import com.google.gwt.user.client.Command;
 import com.google.gwt.user.client.Window;
-import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.google.gwt.user.client.ui.*;
-import com.google.gwt.view.client.ListDataProvider;
-import com.google.gwt.view.client.SelectionChangeEvent;
-import com.google.gwt.view.client.SingleSelectionModel;
+import com.google.gwt.view.client.*;
 import com.google.gwt.xhr.client.XMLHttpRequest;
 
 import java.sql.Date;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.gwt.user.cellview.client.HasKeyboardSelectionPolicy.*;
 
@@ -34,8 +32,19 @@ public class BooksEntry implements EntryPoint {
     public static final String HEADER = "content-type";
     public static final String HEADER_VALUE = "application/json";
 
+    public static final String HTTP_METHOD_GET = "GET";
+    public static final String HTTP_METHOD_POST = "POST";
+    public static final String HTTP_METHOD_PUT= "PUT";
+    public static final String HTTP_METHOD_DELETE = "DELETE";
+
+
     private List<Books> books = new ArrayList<>();
     private List<Purchase> purchases = new ArrayList<Purchase>();
+    private List<Buyer> buyers = new ArrayList<>();
+    private List<Shop> sellers = new ArrayList<>();
+    private Map<String, Books> bookMap = new HashMap();
+    private Map<String, Buyer> buyerMap = new HashMap();
+    private Map<String, Shop> shopMap = new HashMap();
 
     private final MenuBar menu = new MenuBar();
     private final HorizontalPanel bookBtnPanel = new HorizontalPanel();
@@ -54,25 +63,31 @@ public class BooksEntry implements EntryPoint {
     private final HorizontalPanel boxPanel = new HorizontalPanel();
     private final HorizontalPanel boxPurchasePanel = new HorizontalPanel();
 
+    private final ListBox booksListBox = new ListBox();
+    private final ListBox buyersListBox = new ListBox();
+    private final ListBox sellerListBox = new ListBox();
+
     private final TextBox idBox = new TextBox();
     private final TextBox nameBox = new TextBox();
     private final TextBox costBox = new TextBox();
     private final TextBox warehouseBox = new TextBox();
     private final TextBox quantityBox = new TextBox();
+    private final TextBox purchaseIdBox = new TextBox();
+    private final TextBox purchaseDateBox = new TextBox();
+    private final TextBox purchaseOrderNumberBox = new TextBox();
+    private final TextBox purchaseQuantityBox = new TextBox();
+    private final TextBox purchaseSumBox = new TextBox();
+
     private final CellTable<Books> cellTableOfBooks = new CellTable<>();
     private final DataGrid<Purchase> cellTableOfPurchase = new DataGrid();
 
     private final ListDataProvider<Purchase> listDataProvider = new ListDataProvider<>();
 
-/*new Purchase(123, 264562, new Date(02022020l),
-            new Shop(123, "TEST", "TESTAREA", 99.9),
-            new Buyer(123, "test", "testarea", 88.8), 9, 1000.0,
-            new Books(123, "test", 1000.0, "test", 9))*/
 
 
     public void onModuleLoad() {
 
-        Command cmd = () -> Window.alert("You selected a menu item!");
+        Command cmd = () -> Window.alert("//todo");
 
 
 
@@ -82,6 +97,7 @@ public class BooksEntry implements EntryPoint {
             boxPanel.setVisible(true);
             purchaseBtnPanel.setVisible(false);
             vpPurchase.setVisible(false);
+            boxPurchasePanel.setVisible(false);
         });
         menu.addItem("purchase", (Command) () -> {
             vp.setVisible(false);
@@ -90,6 +106,10 @@ public class BooksEntry implements EntryPoint {
             vpPurchase.setVisible(true);
             cellTableOfPurchase.setVisible(true);
             purchaseBtnPanel.setVisible(true);
+            boxPurchasePanel.setVisible(true);
+            loadBookList();
+            loadBuyerList();
+            loadSellerList();
         });
         menu.addItem("buyers", cmd);
         menu.addItem("shops", cmd);
@@ -107,6 +127,20 @@ public class BooksEntry implements EntryPoint {
         boxPanel.add(warehouseBox);
         boxPanel.add(quantityBox);
         boxPanel.setWidth("600px");
+
+        boxPurchasePanel.add(purchaseIdBox);
+        purchaseIdBox.setText("id");
+        boxPurchasePanel.add(purchaseOrderNumberBox);
+        purchaseOrderNumberBox.setText("OrderNumber");
+        boxPurchasePanel.add(purchaseDateBox);
+        purchaseDateBox.setText("Date");
+        boxPurchasePanel.add(purchaseQuantityBox);
+        purchaseQuantityBox.setText("Quantity");
+        boxPurchasePanel.add(purchaseSumBox);
+        purchaseSumBox.setText("Sum");
+        boxPurchasePanel.add(booksListBox);
+        boxPurchasePanel.add(buyersListBox);
+        boxPurchasePanel.add(sellerListBox);
 
         addBookButton.setSize("80px", "20px");
         editBookButton.setSize("80px", "20px");
@@ -136,6 +170,7 @@ public class BooksEntry implements EntryPoint {
         purchaseBtnPanel.setVisible(false);
         vpPurchase.setVisible(false);
         cellTableOfPurchase.setVisible(false);
+        boxPurchasePanel.setVisible(false);
         purchaseBtnPanel.add(addPurchaseButton);
         purchaseBtnPanel.add(editPurchaseButton);
         purchaseBtnPanel.add(deletePurchaseButton);
@@ -145,10 +180,21 @@ public class BooksEntry implements EntryPoint {
 
         listDataProvider.addDataDisplay(cellTableOfPurchase);
         listDataProvider.setList(purchases);
-        cellTableOfPurchase.setSize("600", "500px");
+        cellTableOfPurchase.setSize("1200px", "500px");
 
 
-        SimplePager pager = new SimplePager(SimplePager.TextLocation.CENTER, (SimplePager.Resources) GWT.create(SimplePager.Resources.class), false, 10, true) {
+        SimplePager pager = new SimplePager(SimplePager.TextLocation.CENTER, (SimplePager.Resources) GWT.create(SimplePager.Resources.class),
+                false, 10, true) {
+            @Override
+            public void startLoading() {
+                super.startLoading();
+            }
+
+            @Override
+            protected void onRangeOrRowCountChanged() {
+                super.onRangeOrRowCountChanged();
+            }
+
             @Override
             public boolean hasNextPage() {
                 if (this.getPage() < (this.getPageCount() - 1)) {
@@ -156,22 +202,71 @@ public class BooksEntry implements EntryPoint {
                 }
                 return false;
             }
+
         };
-//        pager.setDisplay(cellTableOfPurchase);
 
-
-
+        pager.setDisplay(cellTableOfBooks);
+        pager.setPageSize(20);
 
         vpPurchase.add(cellTableOfPurchase);
-//        vpPurchase.add(pager);
 
 
 
         addPurchaseButton.addClickHandler(event -> {
-            purchases.add(new Purchase(123, 264562, new Date(20, 11, 5),
+            /*purchases.add(new Purchase(123, 264562, new Date(20, 11, 5),
                     new Shop(123, "TEST", "TESTAREA", 99.9),
                     new Buyer(123, "test", "testarea", 88.8), 9, 1000.0,
-                    new Books(123, "test", 1000.0, "test", 9)));
+                    new Books(123, "test", 1000.0, "test", 9)));*/
+
+            XMLHttpRequest req = XMLHttpRequest.create();
+            req.open("POST", "http://localhost:8082/purchase/add", "true");
+            req.setRequestHeader(HEADER, HEADER_VALUE);
+
+            Purchase send = new Purchase();
+            send.setOrderNumber(Integer.valueOf(purchaseOrderNumberBox.getValue()));
+//            send.setDate(new Date(Long.valueOf(purchaseDateBox.getValue())));
+            send.setQuantity(Integer.valueOf(purchaseQuantityBox.getValue()));
+            send.setSum(Double.valueOf(purchaseSumBox.getValue()));
+
+            send.setDate(new Date(119,11,11));
+
+            send.setBook(bookMap.get(booksListBox.getSelectedItemText()));
+            send.setBuyer(buyerMap.get(buyersListBox.getSelectedItemText()));
+            send.setSeller(shopMap.get(sellerListBox.getSelectedItemText()));
+
+            JSONString orderNumber = new JSONString(String.valueOf(send.getOrderNumber()));
+            JSONString Date = new JSONString(String.valueOf(send.getDate()));
+            JSONString quantity = new JSONString(String.valueOf(send.getQuantity()));
+            JSONString sum = new JSONString(String.valueOf(send.getSum()));
+
+            JSONObject shop = new JSONObject();
+            shop.put("shopName", new JSONString(send.getSeller().getShopName()));
+            shop.put("shopLocationArea", new JSONString(send.getSeller().getShopLocationArea()));
+            shop.put("commissionFee", new JSONString(String.valueOf(send.getSeller().getCommissionFee())));
+
+            JSONObject Buyer = new JSONObject();
+            Buyer.put("surname", new JSONString(send.getBuyer().getSurname()));
+            Buyer.put("residenceArea", new JSONString(send.getBuyer().getResidenceArea()));
+            Buyer.put("discount", new JSONString(String.valueOf(send.getBuyer().getDiscount())));
+
+            JSONArray bookArray = new JSONArray();
+            JSONObject Book = new JSONObject();
+            Book.put("bookName", new JSONString(send.getBook().getName()));
+            Book.put("bookCost", new JSONString(String.valueOf(send.getBook().getCost())));
+            Book.put("bookWarehouse", new JSONString(send.getBook().getWarehouse()));
+            Book.put("bookQuantity", new JSONString(String.valueOf(send.getBook().getQuantity())));
+
+            bookArray.set(0, Book);
+
+            JSONObject toSend = new JSONObject();
+            toSend.put("orderNumber", orderNumber);
+            toSend.put("date", Date);
+            toSend.put("quantity", quantity);
+            toSend.put("sum", sum);
+            toSend.put("book", bookArray);
+            toSend.put("buyer", Buyer);
+            toSend.put("seller", shop);
+            req.send(toSend.toString());
 
             cellTableOfPurchase.redraw();
             cellTableOfPurchase.setRowCount(purchases.size(), true);
@@ -179,8 +274,9 @@ public class BooksEntry implements EntryPoint {
         });
 
         editPurchaseButton.addClickHandler(event -> {
+            purchases.clear();
             XMLHttpRequest req = XMLHttpRequest.create();
-            req.open("GET", "http://localhost:8082/purchase/all", "false");
+            req.open(HTTP_METHOD_GET, "http://localhost:8082/purchase/all", "false");
             req.setOnReadyStateChange(xhr -> {
 
                 if (xhr.getReadyState() == XMLHttpRequest.DONE) {
@@ -188,27 +284,21 @@ public class BooksEntry implements EntryPoint {
 
                         JSONValue jsonValue = JSONParser.parseLenient(req.getResponseText());
                         JSONArray jsonArray = jsonValue.isArray();
-                        purchases.clear();
                         for (int i = 0; i < jsonArray.size(); i++) {
                             JSONObject obj = jsonArray.get(i).isObject();
-//                            JSONArray shopTmp = obj.get("seller").isArray();
-                            JSONArray buyerTmp = obj.get("buyer").isArray();
-                            JSONArray bookTmp = obj.get("book").isArray();
 
-                            JSONObject buyerObj = buyerTmp.get(0).isObject();
-//                            JSONObject shopObj = shopTmp.get(0).isObject();
+                            JSONArray bookTmp = obj.get("book").isArray();
                             JSONObject bookObj = bookTmp.get(0).isObject();
                             JSONObject shopOb = obj.get("seller").isObject();
+                            JSONObject buyerObj = obj.get("buyer").isObject();
 
-                            Shop shop = new Shop(11,"11", "11", 11.1);
-/*                            shop.setId((int)shopOb.get("id").isNumber().doubleValue());
+//                            Shop shop = new Shop(11,"11", "11", 11.1);
+                            Shop shop = new Shop();
+                            shop.setId((int)shopOb.get("id").isNumber().doubleValue());
                             shop.setShopName(shopOb.get("shopName").isString().stringValue());
                             shop.setShopLocationArea(shopOb.get("shopLocationArea").isString().stringValue());
-                            shop.setCommissionFee(shopOb.get("commissionFee").isNumber().doubleValue());*/
-//                            shop.setId((int)shopObj.get("id").isNumber().doubleValue());
-//                            shop.setShopName(shopObj.get("shopName").isString().stringValue());
-//                            shop.setShopLocationArea(shopObj.get("shopLocationArea").isString().stringValue());
-//                            shop.setCommissionFee(shopObj.get("commissionFee").isNumber().doubleValue());
+                            shop.setCommissionFee(shopOb.get("commissionFee").isNumber().doubleValue());
+
 
                             Buyer buyer = new Buyer();
                             buyer.setId((int)buyerObj.get("id").isNumber().doubleValue());
@@ -219,20 +309,21 @@ public class BooksEntry implements EntryPoint {
 
                             Books book = new Books();
 
-                            book.setId(1111);
+                            book.setId((int)bookObj.get("id").isNumber().doubleValue());
                             book.setName(bookObj.get("bookName").isString().stringValue());
                             book.setWarehouse(bookObj.get("bookWarehouse").isString().stringValue());
                             book.setCost(bookObj.get("bookCost").isNumber().doubleValue());
                             book.setQuantity((int)bookObj.get("bookQuantity").isNumber().doubleValue());
 
                             String [] arr = obj.get("date").isString().stringValue().split("-");
-
+                            String date = arr[0] + arr[1] + arr[2];
 
 
                             purchases.add(new Purchase((int)obj.get("id").isNumber().doubleValue(),
                                                         (int)obj.get("orderNumber").isNumber().doubleValue(),
 //                                                        new Date(Long.valueOf(obj.get("date").isString().stringValue())),
-                                                        new Date(20,11,15),
+//                                                        new Date(119,11,15),
+                                                        new Date(Long.valueOf(date)),
                                                         shop,buyer,
                                                         (int)obj.get("quantity").isNumber().doubleValue(),
                                                         obj.get("sum").isNumber().doubleValue(),book));
@@ -248,6 +339,16 @@ public class BooksEntry implements EntryPoint {
             req.send();
         });
 
+        deletePurchaseButton.addClickHandler(clickEvent -> {
+            XMLHttpRequest req = XMLHttpRequest.create();
+            req.open(HTTP_METHOD_DELETE, "http://localhost:8082/purchase/delete/" + purchaseIdBox.getValue());
+
+            req.send();
+            cellTableOfPurchase.redraw();
+            cellTableOfPurchase.setRowCount(purchases.size(), true);
+            cellTableOfPurchase.setRowData(0, purchases);
+
+        });
 
 
         cellTableOfPurchase.setKeyboardSelectionPolicy(KeyboardSelectionPolicy.ENABLED);
@@ -298,7 +399,41 @@ public class BooksEntry implements EntryPoint {
                 return String.valueOf(object.getSeller().getCommissionFee());
             }
         };
-        cellTableOfPurchase.addColumn(columnSellerCommissionFee, "ShopCommissionFee");
+        cellTableOfPurchase.addColumn(columnSellerCommissionFee, "ShopFee");
+
+        TextColumn<Purchase> columnBuyerSurname = new TextColumn<Purchase>() {
+            @Override
+            public String getValue(Purchase object) {
+                return String.valueOf(object.getBuyer().getSurname());
+            }
+        };
+        cellTableOfPurchase.addColumn(columnBuyerSurname, "BuyerSurname");
+
+        TextColumn<Purchase> columnBuyerArea = new TextColumn<Purchase>() {
+            @Override
+            public String getValue(Purchase object) {
+                return String.valueOf(object.getBuyer().getResidenceArea());
+            }
+        };
+        cellTableOfPurchase.addColumn(columnBuyerArea, "BuyerArea");
+
+        TextColumn<Purchase> columnBookName = new TextColumn<Purchase>() {
+            @Override
+            public String getValue(Purchase object) {
+                return String.valueOf(object.getBook().getName());
+            }
+        };
+        cellTableOfPurchase.addColumn(columnBookName, "BookName");
+
+        TextColumn<Purchase> columnBookCost = new TextColumn<Purchase>() {
+            @Override
+            public String getValue(Purchase object) {
+                return String.valueOf(object.getBook().getCost());
+            }
+        };
+        cellTableOfPurchase.addColumn(columnBookCost, "BookCost");
+
+
 
         final SingleSelectionModel<Purchase> selectionPurchaseModel = new SingleSelectionModel<>();
         cellTableOfPurchase.setSelectionModel(selectionPurchaseModel);
@@ -315,13 +450,17 @@ public class BooksEntry implements EntryPoint {
         cellTableOfPurchase.setRowCount(purchases.size(), true);
         cellTableOfPurchase.setRowData(0, purchases);
         cellTableOfPurchase.setColumnWidth(columnIdPurchase, 30, Style.Unit.PX);
-        cellTableOfPurchase.setColumnWidth(columnDate, 40, Style.Unit.PX);
-        cellTableOfPurchase.setColumnWidth(columnOrderNumber, 40, Style.Unit.PX);
-        cellTableOfPurchase.setColumnWidth(columnSellerName, 50, Style.Unit.PX);
-        cellTableOfPurchase.setColumnWidth(columnSellerLocationArea, 50, Style.Unit.PX);
-        cellTableOfPurchase.setColumnWidth(columnSellerCommissionFee, 50, Style.Unit.PX);
+        cellTableOfPurchase.setColumnWidth(columnDate, 80, Style.Unit.PX);
+        cellTableOfPurchase.setColumnWidth(columnOrderNumber, 100, Style.Unit.PX);
+        cellTableOfPurchase.setColumnWidth(columnSellerName, 80, Style.Unit.PX);
+        cellTableOfPurchase.setColumnWidth(columnSellerLocationArea, 100, Style.Unit.PX);
+        cellTableOfPurchase.setColumnWidth(columnSellerCommissionFee, 60, Style.Unit.PX);
+        cellTableOfPurchase.setColumnWidth(columnBuyerSurname, 100, Style.Unit.PX);
+        cellTableOfPurchase.setColumnWidth(columnBuyerArea, 100, Style.Unit.PX);
+        cellTableOfPurchase.setColumnWidth(columnBookName, 120, Style.Unit.PX);
+        cellTableOfPurchase.setColumnWidth(columnBookCost, 60, Style.Unit.PX);
         vpPurchase.setBorderWidth(1);
-        vpPurchase.setWidth("800px");
+        vpPurchase.setWidth("1200px");
 //        vpPurchase.add(cellTableOfPurchase);
 
 
@@ -397,9 +536,7 @@ public class BooksEntry implements EntryPoint {
 
 
         vp.setBorderWidth(1);
-//        vp.add(flexTable);
         vp.add(cellTableOfBooks);
-        pager.setDisplay(cellTableOfBooks);
         vp.add(pager);
 
 
@@ -407,9 +544,10 @@ public class BooksEntry implements EntryPoint {
         addBookButton.addClickHandler(event -> {
 
             addBookRequest();
+            loadBuyerList();
 
             XMLHttpRequest req = XMLHttpRequest.create();
-            req.open("GET", "http://localhost:8082/book/all", "false");
+            req.open(HTTP_METHOD_GET, "http://localhost:8082/book/all", "false");
             req.setOnReadyStateChange(xhr -> {
 
                 if (xhr.getReadyState() == XMLHttpRequest.DONE) {
@@ -421,11 +559,15 @@ public class BooksEntry implements EntryPoint {
                         books.clear();
                         for (int i = 0; i < jsonArray.size(); i++) {
                             JSONObject obj = jsonArray.get(i).isObject();
-                            books.add(new Books((int) obj.get("id").isNumber().doubleValue(),
-                                                    obj.get("bookName").isString().stringValue(),
-                                                    obj.get("bookCost").isNumber().doubleValue(),
-                                                    obj.get("bookWarehouse").isString().stringValue(),
-                                                    (int)obj.get("bookQuantity").isNumber().doubleValue()));
+                            booksListBox.addItem(obj.get("bookName").isString().stringValue());
+                            Books tmpBook = new Books((int) obj.get("id").isNumber().doubleValue(),
+                                    obj.get("bookName").isString().stringValue(),
+                                    obj.get("bookCost").isNumber().doubleValue(),
+                                    obj.get("bookWarehouse").isString().stringValue(),
+                                    (int)obj.get("bookQuantity").isNumber().doubleValue());
+                            books.add(tmpBook);
+                            bookMap.put(tmpBook.getName(), tmpBook);
+
                         }
 
                         cellTableOfBooks.redraw();
@@ -442,7 +584,7 @@ public class BooksEntry implements EntryPoint {
         deleteBookButton.addClickHandler(event -> {
 
             XMLHttpRequest req = XMLHttpRequest.create();
-            req.open("DELETE", "http://localhost:8082/book/delete/" + idBox.getValue());
+            req.open(HTTP_METHOD_DELETE, "http://localhost:8082/book/delete/" + idBox.getValue());
 
             cellTableOfBooks.setRowCount(books.size(), true);
             cellTableOfBooks.setRowData(0, books);
@@ -452,7 +594,7 @@ public class BooksEntry implements EntryPoint {
         editBookButton.addClickHandler(event -> {
 
             XMLHttpRequest req = XMLHttpRequest.create();
-            req.open("PUT", "http://localhost:8082/book/update/" + idBox.getValue());
+            req.open(HTTP_METHOD_PUT, "http://localhost:8082/book/update/" + idBox.getValue());
             req.setRequestHeader(HEADER, HEADER_VALUE);
 
 
@@ -475,7 +617,7 @@ public class BooksEntry implements EntryPoint {
             req.send(toSend.toString());
         });
 
-//        DataGrid();
+
 
         RootPanel.get().add(menu);
         RootPanel.get().add(vp);
@@ -487,6 +629,8 @@ public class BooksEntry implements EntryPoint {
         RootPanel.get().add(boxPurchasePanel);
         RootPanel.get().add(purchaseBtnPanel);
 
+        loadBookList();
+
 
     }
 
@@ -497,110 +641,110 @@ public class BooksEntry implements EntryPoint {
         return flexTable;
     }
 
-    private void DataGrid(){
 
 
-        cellTableOfPurchase.setKeyboardSelectionPolicy(KeyboardSelectionPolicy.ENABLED);
-
-        TextColumn<Purchase> colomnId = new TextColumn<Purchase>() {
-            @Override
-            public String getValue(Purchase object) {
-                return String.valueOf(object.getId());
-            }
-        };
-        cellTableOfPurchase.addColumn(colomnId, "ID");
-
-        TextColumn<Purchase> columnOrderNumber = new TextColumn<Purchase>() {
-            @Override
-            public String getValue(Purchase object) {
-                return String.valueOf(object.getOrderNumber());
-            }
-        };
-        cellTableOfPurchase.addColumn(columnOrderNumber, "OrderNumber");
-
-        TextColumn<Purchase> colomnDate = new TextColumn<Purchase>() {
-            @Override
-            public String getValue(Purchase object) {
-                return String.valueOf(object.getDate());
-            }
-        };
-        cellTableOfPurchase.addColumn(colomnDate, "Date");
-
-        TextColumn<Purchase> colomnSellerName = new TextColumn<Purchase>() {
-            @Override
-            public String getValue(Purchase object) {
-                return String.valueOf(object.getSeller().getShopName());
-            }
-        };
-        cellTableOfPurchase.addColumn(colomnSellerName, "ShopName");
-
-        TextColumn<Purchase> colomnSellerLocationArea = new TextColumn<Purchase>() {
-            @Override
-            public String getValue(Purchase object) {
-                return String.valueOf(object.getSeller().getShopLocationArea());
-            }
-        };
-        cellTableOfPurchase.addColumn(colomnSellerLocationArea, "ShopLocationArea");
-
-        TextColumn<Purchase> colomnSellerCommissionFee = new TextColumn<Purchase>() {
-            @Override
-            public String getValue(Purchase object) {
-                return String.valueOf(object.getSeller().getCommissionFee());
-            }
-        };
-        cellTableOfPurchase.addColumn(colomnSellerCommissionFee, "ShopCommissionFee");
-
-        final SingleSelectionModel<Purchase> selectionModel = new SingleSelectionModel<>();
-        cellTableOfPurchase.setSelectionModel(selectionModel);
-        selectionModel.addSelectionChangeHandler(new SelectionChangeEvent.Handler() {
-            public void onSelectionChange(SelectionChangeEvent event) {
-                Purchase selected = selectionModel.getSelectedObject();
-                if (selected != null) {
-                    Window.alert("You selected: " + selected.getOrderNumber() + " " + selected.getSeller().getShopName() + " "
-                            + selected.getSeller().getShopLocationArea());
-                }
-            }
-        });
-        cellTableOfPurchase.setRowCount(purchases.size(), true);
-        cellTableOfPurchase.setRowData(0, purchases);
-        cellTableOfPurchase.setWidth("100%");
-        vpPurchase.add(cellTableOfPurchase);
-        vpPurchase.setBorderWidth(1);
-    }
-
-    private void loadDataTable(){
+    private void loadBookList(){
         XMLHttpRequest req = XMLHttpRequest.create();
-        req.open("GET", "http://localhost:8082/book/all", "true");
+        req.open(HTTP_METHOD_GET, "http://localhost:8082/book/all", "true");
+
         req.setOnReadyStateChange(xhr -> {
 
             if (xhr.getReadyState() == XMLHttpRequest.DONE) {
                 if (xhr.getStatus() == 200) {
                     JSONValue jsonValue = JSONParser.parseLenient(req.getResponseText());
                     JSONArray jsonArray = jsonValue.isArray();
-                    JSONObject obj = jsonArray.get(0).isObject();
+                    books.clear();
+                    booksListBox.clear();
 
                     for (int i = 0; i < jsonArray.size(); i++) {
-                        books.add(new Books((int) obj.get("id").isNumber().doubleValue(),
+                        JSONObject obj = jsonArray.get(i).isObject();
+
+                        booksListBox.addItem(obj.get("bookName").isString().stringValue());
+                        Books tmpBook = new Books((int) obj.get("id").isNumber().doubleValue(),
                                 obj.get("bookName").isString().stringValue(),
                                 obj.get("bookCost").isNumber().doubleValue(),
                                 obj.get("bookWarehouse").isString().stringValue(),
-                                (int)obj.get("bookQuantity").isNumber().doubleValue()));
+                                (int)obj.get("bookQuantity").isNumber().doubleValue());
+                        books.add(tmpBook);
+                        bookMap.put(tmpBook.getName(), tmpBook);
                     }
                 }
             }
         });
         req.send();
-        cellTableOfBooks.redraw();
+/*        cellTableOfBooks.redraw();
 
         cellTableOfBooks.setRowCount(books.size(), true);
-        cellTableOfBooks.setRowData(0, books);
+        cellTableOfBooks.setRowData(0, books);*/
 
+    }
+
+    private void loadBuyerList() {
+        {
+            XMLHttpRequest req = XMLHttpRequest.create();
+            req.open("GET", "http://localhost:8082/buyer/all", "true");
+            req.setOnReadyStateChange(xhr -> {
+
+                if (xhr.getReadyState() == XMLHttpRequest.DONE) {
+                    if (xhr.getStatus() == 200) {
+                        JSONValue jsonValue = JSONParser.parseLenient(req.getResponseText());
+                        JSONArray jsonArray = jsonValue.isArray();
+                        buyers.clear();
+                        buyersListBox.clear();
+
+                        for (int i = 0; i < jsonArray.size(); i++) {
+                            JSONObject obj = jsonArray.get(i).isObject();
+
+                            buyersListBox.addItem(obj.get("surname").isString().stringValue());
+                            Buyer tmpBuyer = new Buyer((int) obj.get("id").isNumber().doubleValue(),
+                                    obj.get("surname").isString().stringValue(),
+                                    obj.get("residenceArea").isString().stringValue(),
+                                    obj.get("discount").isNumber().doubleValue());
+                            buyers.add(tmpBuyer);
+                            buyerMap.put(tmpBuyer.getSurname(), tmpBuyer);
+                        }
+                    }
+                }
+            });
+            req.send();
+        }
+    }
+
+    private void loadSellerList() {
+        {
+            XMLHttpRequest req = XMLHttpRequest.create();
+            req.open("GET", "http://localhost:8082/shop/all", "true");
+            req.setOnReadyStateChange(xhr -> {
+
+                if (xhr.getReadyState() == XMLHttpRequest.DONE) {
+                    if (xhr.getStatus() == 200) {
+                        JSONValue jsonValue = JSONParser.parseLenient(req.getResponseText());
+                        JSONArray jsonArray = jsonValue.isArray();
+                        sellers.clear();
+                        sellerListBox.clear();
+
+                        for (int i = 0; i < jsonArray.size(); i++) {
+                            JSONObject obj = jsonArray.get(i).isObject();
+
+                            sellerListBox.addItem(obj.get("shopName").isString().stringValue());
+                            Shop tmpSeller = new Shop((int) obj.get("id").isNumber().doubleValue(),
+                                    obj.get("shopName").isString().stringValue(),
+                                    obj.get("shopLocationArea").isString().stringValue(),
+                                    obj.get("commissionFee").isNumber().doubleValue());
+                            sellers.add(tmpSeller);
+                            shopMap.put(tmpSeller.getShopName(), tmpSeller);
+                        }
+                    }
+                }
+            });
+            req.send();
+        }
     }
 
 
     private void addBookRequest(){
         XMLHttpRequest req = XMLHttpRequest.create();
-        req.open("POST", "http://localhost:8082/book/add", "true");
+        req.open(HTTP_METHOD_POST, "http://localhost:8082/book/add", "true");
         req.setRequestHeader(HEADER, HEADER_VALUE);
 
 
